@@ -33,6 +33,77 @@ impl<T> Annotation<T> {
     }
 }
 
+///
+/// トークンの種類
+///
+enum TokenKind {
+    /// [0-9][0-9]*
+    Number(u64),
+    /// +
+    Plus,
+    /// -
+    Minus,
+    /// *
+    Asterisk,
+    /// /
+    Slash,
+    /// (
+    LParen,
+    /// )
+    RParen,
+}
+
+/// TokenKindを持つアノテーションをTokenとして定義する
+type Token = Annotation<TokenKind>;
+
+/// ファクトリメソッドをトークン種類ごとに用意する
+impl Token {
+    fn number(n: u64, location: Location) -> Self {
+        Self::new(TokenKind::Number(n), location)
+    }
+    fn plus(location: Location) -> Self {
+        Self::new(TokenKind::Plus, location)
+    }
+    fn minus(location: Location) -> Self {
+        Self::new(TokenKind::Minus, location)
+    }
+    fn asterisk(location: Location) -> Self {
+        Self::new(TokenKind::Asterisk, location)
+    }
+    fn slash(location: Location) -> Self {
+        Self::new(TokenKind::Slash, location)
+    }
+    fn lparen(location: Location) -> Self {
+        Self::new(TokenKind::LParen, location)
+    }
+    fn rparen(location: Location) -> Self {
+        Self::new(TokenKind::RParen, location)
+    }
+}
+
+///
+/// 字句解析エラーの種類
+///
+enum LexErrorKind {
+    /// 無効な文字
+    InvalidChar(char),
+    /// 文字列の終わり
+    Eof,
+}
+
+/// LexErrorKindを持つアノテーションをLexErrorとして定義する
+type LexError = Annotation<LexErrorKind>;
+
+/// ファクトリメソッドを字句解析エラー種類ごとに用意する
+impl LexError {
+    fn invalid_char(c: char, location: Location) -> Self {
+        Self::new(LexErrorKind::InvalidChar(c), location)
+    }
+    fn eof(location: Location) -> Self {
+        Self::new(LexErrorKind::Eof, location)
+    }
+}
+
 fn main() {
     println!("hello parser!");
 }
