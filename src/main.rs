@@ -1,5 +1,6 @@
 use std::io;
 mod lexer;
+mod parser;
 
 fn prompt(s: &str) -> io::Result<()> {
     use std::io::{stdout, Write};

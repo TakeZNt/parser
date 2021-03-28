@@ -28,7 +28,7 @@ impl<T> Annotation<T> {
     ///
     /// アノテーションを作成する
     ///
-    fn new(value: T, location: Location) -> Self {
+    pub fn new(value: T, location: Location) -> Self {
         Self { value, location }
     }
 }
