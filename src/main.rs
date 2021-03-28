@@ -119,8 +119,6 @@ fn lex(input: &str) -> Result<Vec<Token>, LexError> {
 
     while index < input_bytes.len() {
         match input_bytes[index] {
-            // 数値
-            b'0'..=b'9' => lex_number(input_bytes, &mut index, &mut tokens),
             // 四則演算
             b'+' => lex_one_byte(input_bytes, &mut index, b'+', &mut tokens)?,
             b'-' => lex_one_byte(input_bytes, &mut index, b'-', &mut tokens)?,
@@ -129,14 +127,20 @@ fn lex(input: &str) -> Result<Vec<Token>, LexError> {
             // かっこ
             b'(' => lex_one_byte(input_bytes, &mut index, b'(', &mut tokens)?,
             b')' => lex_one_byte(input_bytes, &mut index, b')', &mut tokens)?,
-            // 空白文字
-            b' ' | b'\n' | b'\t' => skip_spaces(input_bytes, &mut index),
             // 上記以外の文字の場合
             b => {
-                return Err(LexError::invalid_char(
-                    b as char,
-                    Location(index, index + 1),
-                ))
+                if is_number(b) {
+                    // 数値
+                    lex_number(input_bytes, &mut index, &mut tokens);
+                } else if is_space(b) {
+                    // 空白文字
+                    skip_spaces(input_bytes, &mut index);
+                } else {
+                    return Err(LexError::invalid_char(
+                        b as char,
+                        Location(index, index + 1),
+                    ));
+                }
             }
         }
     }
@@ -148,7 +152,7 @@ fn lex_number(input: &[u8], index_address: &mut usize, tokens: &mut Vec<Token>) 
     use std::str::from_utf8;
 
     let start = *index_address;
-    while *index_address < input.len() && b"0123456789".contains(&input[*index_address]) {
+    while *index_address < input.len() && is_number(input[*index_address]) {
         *index_address += 1;
     }
 
@@ -163,11 +167,19 @@ fn lex_number(input: &[u8], index_address: &mut usize, tokens: &mut Vec<Token>) 
     tokens.push(Token::number(numbber, Location(start, *index_address)));
 }
 
+fn is_number(byte: u8) -> bool {
+    b'0' <= byte && byte <= b'9'
+}
+
 /// 空白文字（半角スペース、改行、タブ）を無視する
 fn skip_spaces(input: &[u8], index_address: &mut usize) {
-    while *index_address < input.len() && b" \t\n".contains(&input[*index_address]) {
+    while *index_address < input.len() && is_space(input[*index_address]) {
         *index_address += 1;
     }
+}
+
+fn is_space(byte: u8) -> bool {
+    byte == b' ' || byte == b'\t' || byte == b'\n'
 }
 
 /// 1文字のトークンを解析する
