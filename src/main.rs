@@ -120,52 +120,17 @@ fn lex(input: &str) -> Result<Vec<Token>, LexError> {
     while index < input_bytes.len() {
         match input_bytes[index] {
             // 数値
-            b'0'..=b'9' => {
-                let tok = lex_number(input_bytes, &mut index);
-                tokens.push(tok);
-            }
+            b'0'..=b'9' => lex_number(input_bytes, &mut index, &mut tokens),
             // 四則演算
-            b'+' => match lex_plus(input_bytes, &mut index) {
-                Ok(tok) => {
-                    tokens.push(tok);
-                }
-                Err(e) => return Err(e),
-            },
-            b'-' => match lex_minus(input_bytes, &mut index) {
-                Ok(tok) => {
-                    tokens.push(tok);
-                }
-                Err(e) => return Err(e),
-            },
-            b'*' => match lex_asterisk(input_bytes, &mut index) {
-                Ok(tok) => {
-                    tokens.push(tok);
-                }
-                Err(e) => return Err(e),
-            },
-            b'/' => match lex_slash(input_bytes, &mut index) {
-                Ok(tok) => {
-                    tokens.push(tok);
-                }
-                Err(e) => return Err(e),
-            },
+            b'+' => lex_one_byte(input_bytes, &mut index, b'+', &mut tokens)?,
+            b'-' => lex_one_byte(input_bytes, &mut index, b'-', &mut tokens)?,
+            b'*' => lex_one_byte(input_bytes, &mut index, b'*', &mut tokens)?,
+            b'/' => lex_one_byte(input_bytes, &mut index, b'/', &mut tokens)?,
             // かっこ
-            b'(' => match lex_lparen(input_bytes, &mut index) {
-                Ok(tok) => {
-                    tokens.push(tok);
-                }
-                Err(e) => return Err(e),
-            },
-            b')' => match lex_rparen(input_bytes, &mut index) {
-                Ok(tok) => {
-                    tokens.push(tok);
-                }
-                Err(e) => return Err(e),
-            },
+            b'(' => lex_one_byte(input_bytes, &mut index, b'(', &mut tokens)?,
+            b')' => lex_one_byte(input_bytes, &mut index, b')', &mut tokens)?,
             // 空白文字
-            b' ' | b'\n' | b'\t' => {
-                skip_spaces(input_bytes, &mut index);
-            }
+            b' ' | b'\n' | b'\t' => skip_spaces(input_bytes, &mut index),
             // 上記以外の文字の場合
             b => {
                 return Err(LexError::invalid_char(
@@ -179,7 +144,7 @@ fn lex(input: &str) -> Result<Vec<Token>, LexError> {
 }
 
 /// 数値を解析する
-fn lex_number(input: &[u8], index_address: &mut usize) -> Token {
+fn lex_number(input: &[u8], index_address: &mut usize, tokens: &mut Vec<Token>) {
     use std::str::from_utf8;
 
     let start = *index_address;
@@ -187,14 +152,15 @@ fn lex_number(input: &[u8], index_address: &mut usize) -> Token {
         *index_address += 1;
     }
 
-    let n: u64 = from_utf8(&input[start..*index_address])
+    // 数値の文字列を実際の数値へ変換する
+    let numbber: u64 = from_utf8(&input[start..*index_address])
         // バイト配列から文字列への変換はここでは失敗することはないので無条件にunwrapする
         .unwrap()
         .parse()
         // 文字列から数値への変換もここでは失敗することはないので無条件にunwrapする
         .unwrap();
 
-    Token::number(n, Location(start, *index_address))
+    tokens.push(Token::number(numbber, Location(start, *index_address)));
 }
 
 /// 空白文字（半角スペース、改行、タブ）を無視する
@@ -204,47 +170,34 @@ fn skip_spaces(input: &[u8], index_address: &mut usize) {
     }
 }
 
-/// '+'を解析する
-fn lex_plus(input: &[u8], index_address: &mut usize) -> Result<Token, LexError> {
+/// 1文字のトークンを解析する
+fn lex_one_byte(
+    input: &[u8],
+    index_address: &mut usize,
+    byte: u8,
+    tokens: &mut Vec<Token>,
+) -> Result<(), LexError> {
     let start = *index_address;
-    consume_byte(input, index_address, b'+').map(|()| Token::plus(Location(start, *index_address)))
+    consume_byte(input, index_address, byte)?;
+    tokens.push(create_one_byte_token(byte, start, *index_address));
+    Ok(())
 }
 
-/// '-'を解析する
-fn lex_minus(input: &[u8], index_address: &mut usize) -> Result<Token, LexError> {
-    let start = *index_address;
-    consume_byte(input, index_address, b'-').map(|()| Token::minus(Location(start, *index_address)))
-}
-
-/// '*'を解析する
-fn lex_asterisk(input: &[u8], index_address: &mut usize) -> Result<Token, LexError> {
-    let start = *index_address;
-    consume_byte(input, index_address, b'*')
-        .map(|()| Token::asterisk(Location(start, *index_address)))
-}
-
-/// '/'を解析する
-fn lex_slash(input: &[u8], index_address: &mut usize) -> Result<Token, LexError> {
-    let start = *index_address;
-    consume_byte(input, index_address, b'/').map(|()| Token::slash(Location(start, *index_address)))
-}
-
-/// '('を解析する
-fn lex_lparen(input: &[u8], index_address: &mut usize) -> Result<Token, LexError> {
-    let start = *index_address;
-    consume_byte(input, index_address, b'(')
-        .map(|()| Token::lparen(Location(start, *index_address)))
-}
-
-/// ')'を解析する
-fn lex_rparen(input: &[u8], index_address: &mut usize) -> Result<Token, LexError> {
-    let start = *index_address;
-    consume_byte(input, index_address, b')')
-        .map(|()| Token::rparen(Location(start, *index_address)))
+fn create_one_byte_token(byte: u8, start_index: usize, end_index: usize) -> Token {
+    match byte {
+        b'+' => Token::plus(Location(start_index, end_index)),
+        b'-' => Token::minus(Location(start_index, end_index)),
+        b'*' => Token::asterisk(Location(start_index, end_index)),
+        b'/' => Token::slash(Location(start_index, end_index)),
+        b'(' => Token::lparen(Location(start_index, end_index)),
+        b')' => Token::rparen(Location(start_index, end_index)),
+        b => panic!("unexpected byte : {}", b),
+    }
 }
 
 ///
-/// 引数に渡されたバイトスライスのposの位置が期待するバイト外の場合、エラーを返す
+/// 引数に渡されたバイトスライスのposの位置が期待するバイト外の場合、エラーを返す。
+/// それ以外の場合、インデックスを1進める。
 ///
 fn consume_byte(input: &[u8], index_address: &mut usize, expected: u8) -> Result<(), LexError> {
     if input.len() <= *index_address {
