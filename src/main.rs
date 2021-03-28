@@ -115,148 +115,150 @@ fn lex(input: &str) -> Result<Vec<Token>, LexError> {
     // バイト配列のスライスへ入力を変換
     let input_bytes = input.as_bytes();
     // バイトスライスの位置
-    let mut pos = 0;
+    let mut index = 0;
 
-    while pos < input_bytes.len() {
-        match input_bytes[pos] {
+    while index < input_bytes.len() {
+        match input_bytes[index] {
             // 数値
             b'0'..=b'9' => {
-                let (tok, p) = lex_number(input_bytes, pos);
+                let tok = lex_number(input_bytes, &mut index);
                 tokens.push(tok);
-                pos = p;
             }
             // 四則演算
-            b'+' => match lex_plus(input_bytes, pos) {
-                Ok((tok, p)) => {
+            b'+' => match lex_plus(input_bytes, &mut index) {
+                Ok(tok) => {
                     tokens.push(tok);
-                    pos = p;
                 }
                 Err(e) => return Err(e),
             },
-            b'-' => match lex_minus(input_bytes, pos) {
-                Ok((tok, p)) => {
+            b'-' => match lex_minus(input_bytes, &mut index) {
+                Ok(tok) => {
                     tokens.push(tok);
-                    pos = p;
                 }
                 Err(e) => return Err(e),
             },
-            b'*' => match lex_asterisk(input_bytes, pos) {
-                Ok((tok, p)) => {
+            b'*' => match lex_asterisk(input_bytes, &mut index) {
+                Ok(tok) => {
                     tokens.push(tok);
-                    pos = p;
                 }
                 Err(e) => return Err(e),
             },
-            b'/' => match lex_slash(input_bytes, pos) {
-                Ok((tok, p)) => {
+            b'/' => match lex_slash(input_bytes, &mut index) {
+                Ok(tok) => {
                     tokens.push(tok);
-                    pos = p;
                 }
                 Err(e) => return Err(e),
             },
             // かっこ
-            b'(' => match lex_lparen(input_bytes, pos) {
-                Ok((tok, p)) => {
+            b'(' => match lex_lparen(input_bytes, &mut index) {
+                Ok(tok) => {
                     tokens.push(tok);
-                    pos = p;
                 }
                 Err(e) => return Err(e),
             },
-            b')' => match lex_rparen(input_bytes, pos) {
-                Ok((tok, p)) => {
+            b')' => match lex_rparen(input_bytes, &mut index) {
+                Ok(tok) => {
                     tokens.push(tok);
-                    pos = p;
                 }
                 Err(e) => return Err(e),
             },
             // 空白文字
             b' ' | b'\n' | b'\t' => {
-                let ((), p) = skip_spaces(input_bytes, pos);
-                pos = p;
+                skip_spaces(input_bytes, &mut index);
             }
             // 上記以外の文字の場合
-            b => return Err(LexError::invalid_char(b as char, Location(pos, pos + 1))),
+            b => {
+                return Err(LexError::invalid_char(
+                    b as char,
+                    Location(index, index + 1),
+                ))
+            }
         }
     }
     Ok(tokens)
 }
 
 /// 数値を解析する
-fn lex_number(input: &[u8], start: usize) -> (Token, usize) {
+fn lex_number(input: &[u8], index_address: &mut usize) -> Token {
     use std::str::from_utf8;
 
-    let mut pos = start;
-    while pos < input.len() && b"0123456789".contains(&input[pos]) {
-        pos += 1;
+    let start = *index_address;
+    while *index_address < input.len() && b"0123456789".contains(&input[*index_address]) {
+        *index_address += 1;
     }
 
-    let n: u64 = from_utf8(&input[start..pos])
+    let n: u64 = from_utf8(&input[start..*index_address])
         // バイト配列から文字列への変換はここでは失敗することはないので無条件にunwrapする
         .unwrap()
         .parse()
         // 文字列から数値への変換もここでは失敗することはないので無条件にunwrapする
         .unwrap();
 
-    (Token::number(n, Location(start, pos)), pos)
+    Token::number(n, Location(start, *index_address))
 }
 
 /// 空白文字（半角スペース、改行、タブ）を無視する
-fn skip_spaces(input: &[u8], start: usize) -> ((), usize) {
-    let mut pos = start;
-    while pos < input.len() && b" \t\n".contains(&input[pos]) {
-        pos += 1;
+fn skip_spaces(input: &[u8], index_address: &mut usize) {
+    while *index_address < input.len() && b" \t\n".contains(&input[*index_address]) {
+        *index_address += 1;
     }
-    // 空白は無視する
-    ((), pos)
 }
 
 /// '+'を解析する
-fn lex_plus(input: &[u8], start: usize) -> Result<(Token, usize), LexError> {
-    consume_byte(input, start, b'+').map(|(_, end)| (Token::plus(Location(start, end)), end))
+fn lex_plus(input: &[u8], index_address: &mut usize) -> Result<Token, LexError> {
+    let start = *index_address;
+    consume_byte(input, index_address, b'+').map(|()| Token::plus(Location(start, *index_address)))
 }
 
 /// '-'を解析する
-fn lex_minus(input: &[u8], start: usize) -> Result<(Token, usize), LexError> {
-    consume_byte(input, start, b'-').map(|(_, end)| (Token::minus(Location(start, end)), end))
+fn lex_minus(input: &[u8], index_address: &mut usize) -> Result<Token, LexError> {
+    let start = *index_address;
+    consume_byte(input, index_address, b'-').map(|()| Token::minus(Location(start, *index_address)))
 }
 
 /// '*'を解析する
-fn lex_asterisk(input: &[u8], start: usize) -> Result<(Token, usize), LexError> {
-    consume_byte(input, start, b'*').map(|(_, end)| (Token::asterisk(Location(start, end)), end))
+fn lex_asterisk(input: &[u8], index_address: &mut usize) -> Result<Token, LexError> {
+    let start = *index_address;
+    consume_byte(input, index_address, b'*')
+        .map(|()| Token::asterisk(Location(start, *index_address)))
 }
 
 /// '/'を解析する
-fn lex_slash(input: &[u8], start: usize) -> Result<(Token, usize), LexError> {
-    consume_byte(input, start, b'/').map(|(_, end)| (Token::slash(Location(start, end)), end))
+fn lex_slash(input: &[u8], index_address: &mut usize) -> Result<Token, LexError> {
+    let start = *index_address;
+    consume_byte(input, index_address, b'/').map(|()| Token::slash(Location(start, *index_address)))
 }
 
 /// '('を解析する
-fn lex_lparen(input: &[u8], start: usize) -> Result<(Token, usize), LexError> {
-    consume_byte(input, start, b'(').map(|(_, end)| (Token::lparen(Location(start, end)), end))
+fn lex_lparen(input: &[u8], index_address: &mut usize) -> Result<Token, LexError> {
+    let start = *index_address;
+    consume_byte(input, index_address, b'(')
+        .map(|()| Token::lparen(Location(start, *index_address)))
 }
 
 /// ')'を解析する
-fn lex_rparen(input: &[u8], start: usize) -> Result<(Token, usize), LexError> {
-    consume_byte(input, start, b')').map(|(_, end)| (Token::rparen(Location(start, end)), end))
+fn lex_rparen(input: &[u8], index_address: &mut usize) -> Result<Token, LexError> {
+    let start = *index_address;
+    consume_byte(input, index_address, b')')
+        .map(|()| Token::rparen(Location(start, *index_address)))
 }
 
 ///
-/// 引数に渡されたバイトスライスのposの位置が期待するバイトの場合、posに1を加算して返す。
-/// それ以外の場合、エラーを返す
+/// 引数に渡されたバイトスライスのposの位置が期待するバイト外の場合、エラーを返す
 ///
-fn consume_byte(input: &[u8], pos: usize, expected: u8) -> Result<(u8, usize), LexError> {
-    if input.len() <= pos {
-        return Err(LexError::eof(Location(pos, pos)));
+fn consume_byte(input: &[u8], index_address: &mut usize, expected: u8) -> Result<(), LexError> {
+    if input.len() <= *index_address {
+        return Err(LexError::eof(Location(*index_address, *index_address)));
     }
 
-    if input[pos] != expected {
+    if input[*index_address] != expected {
         return Err(LexError::invalid_char(
-            input[pos] as char,
-            Location(pos, pos + 1),
+            input[*index_address] as char,
+            Location(*index_address, *index_address + 1),
         ));
     }
-
-    Ok((expected, pos + 1))
+    *index_address += 1;
+    Ok(())
 }
 
 #[test]
