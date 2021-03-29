@@ -3,13 +3,13 @@
 /// 例えばLocation(5, 8)は6文字目から9文字目までを表す。
 ///
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Location(usize, usize);
+pub struct Location(pub usize, pub usize);
 
 impl Location {
     ///
     ///　位置情報をマージする
     ///
-    fn merge(&self, other: Location) -> Location {
+    pub fn merge(&self, other: &Location) -> Location {
         use std::cmp::{max, min};
         Location(min(self.0, other.0), max(self.1, other.1))
     }
@@ -20,8 +20,8 @@ impl Location {
 ///
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Annotation<T> {
-    value: T,
-    location: Location,
+    pub value: T,
+    pub location: Location,
 }
 
 impl<T> Annotation<T> {
@@ -59,25 +59,25 @@ pub type Token = Annotation<TokenKind>;
 
 /// ファクトリメソッドをトークン種類ごとに用意する
 impl Token {
-    fn number(n: u64, location: Location) -> Self {
+    pub fn number(n: u64, location: Location) -> Self {
         Self::new(TokenKind::Number(n), location)
     }
-    fn plus(location: Location) -> Self {
+    pub fn plus(location: Location) -> Self {
         Self::new(TokenKind::Plus, location)
     }
-    fn minus(location: Location) -> Self {
+    pub fn minus(location: Location) -> Self {
         Self::new(TokenKind::Minus, location)
     }
-    fn asterisk(location: Location) -> Self {
+    pub fn asterisk(location: Location) -> Self {
         Self::new(TokenKind::Asterisk, location)
     }
-    fn slash(location: Location) -> Self {
+    pub fn slash(location: Location) -> Self {
         Self::new(TokenKind::Slash, location)
     }
-    fn lparen(location: Location) -> Self {
+    pub fn lparen(location: Location) -> Self {
         Self::new(TokenKind::LParen, location)
     }
-    fn rparen(location: Location) -> Self {
+    pub fn rparen(location: Location) -> Self {
         Self::new(TokenKind::RParen, location)
     }
 }
@@ -229,7 +229,7 @@ fn consume_byte(input: &[u8], index_address: &mut usize, expected: u8) -> Result
 #[cfg(test)]
 mod test {
     use super::*;
-    
+
     #[test]
     fn test_lexer() {
         assert_eq!(
