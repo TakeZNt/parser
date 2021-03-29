@@ -302,4 +302,16 @@ mod tests {
             ))
         )
     }
+
+    #[test]
+    fn test_parse_atom_num() {
+        let tokens = vec![
+            Token::number(1, Location(0, 1)),
+        ];
+        let mut iter = tokens.into_iter().peekable();
+        assert_eq!(
+            parse_atom(&mut iter),
+            Ok(Ast::num(1, Location(0, 1)))
+        );
+    }
 }
