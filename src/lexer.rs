@@ -1,3 +1,6 @@
+use std::error::Error;
+use std::fmt;
+
 ///
 /// 入力文字の何文字目から何文字目までかを表す構造体。ただし、数値は0始まり。
 /// 例えばLocation(5, 8)は6文字目から9文字目までを表す。
@@ -12,6 +15,12 @@ impl Location {
     pub fn merge(&self, other: &Location) -> Location {
         use std::cmp::{max, min};
         Location(min(self.0, other.0), max(self.1, other.1))
+    }
+}
+
+impl fmt::Display for Location {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}-{}", self.0, self.1)
     }
 }
 
@@ -52,6 +61,21 @@ pub enum TokenKind {
     LParen,
     /// )
     RParen,
+}
+
+impl fmt::Display for TokenKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::TokenKind::*;
+        match self {
+            Number(n) => n.fmt(f),
+            Plus => write!(f, "+"),
+            Minus => write!(f, "-"),
+            Asterisk => write!(f, "*"),
+            Slash => write!(f, "/"),
+            LParen => write!(f, "("),
+            RParen => write!(f, ")"),
+        }
+    }
 }
 
 /// TokenKindを持つアノテーションをTokenとして定義する
@@ -105,6 +129,18 @@ impl LexError {
         Self::new(LexErrorKind::Eof, location)
     }
 }
+
+impl fmt::Display for LexError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::LexErrorKind::*;
+        match self.value {
+            InvalidChar(c) => write!(f, "{}: invalid character '{}'", self.location, c),
+            Eof => write!(f, "End of file"),
+        }
+    }
+}
+
+impl Error for LexError {}
 
 ///
 /// 字句解析器

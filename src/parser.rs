@@ -1,7 +1,10 @@
 use super::lexer::*;
 
+use std::error::Error;
+use std::fmt;
 use std::iter::Iterator;
 use std::iter::Peekable;
+use std::str::FromStr;
 
 /// 単項演算子の種類
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -90,6 +93,16 @@ impl Ast {
     }
 }
 
+/// str::parse::<Ast>()を使えるようにする
+impl FromStr for Ast {
+    type Err = ApplicationError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let tokens = lex(s)?;
+        let ast = parse(tokens)?;
+        Ok(ast)
+    }
+}
+
 /// 構文解析のエラー
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ParseError {
@@ -105,6 +118,65 @@ pub enum ParseError {
     RedundantExpression(Token),
     /// 解析の途中で入力が終わった
     Eof,
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::ParseError::*;
+        match self {
+            UnexpectedToken(tok) => write!(f, "{}: '{}' is not expected", tok.location, tok.value),
+            NotExpression(tok) => write!(
+                f,
+                "{}: '{}' is not start of expression",
+                tok.location, tok.value
+            ),
+            NotOperator(tok) => write!(f, "{}: '{}' is not an operator", tok.location, tok.value),
+            UnclosedOpenParen(tok) => write!(f, "{}: '{}' is not closed", tok.location, tok.value),
+            RedundantExpression(tok) => write!(
+                f,
+                "{}: expression after '{}' is redundant",
+                tok.location, tok.value
+            ),
+            Eof => write!(f, "End of file"),
+        }
+    }
+}
+
+impl Error for ParseError {}
+
+/// エラーを統一的に扱うエラー型
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ApplicationError {
+    Lexer(LexError),
+    Parser(ParseError),
+}
+
+impl From<LexError> for ApplicationError {
+    fn from(e: LexError) -> Self {
+        ApplicationError::Lexer(e)
+    }
+}
+
+impl From<ParseError> for ApplicationError {
+    fn from(e: ParseError) -> Self {
+        ApplicationError::Parser(e)
+    }
+}
+
+impl fmt::Display for ApplicationError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "parse error")
+    }
+}
+
+impl Error for ApplicationError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        use self::ApplicationError::*;
+        match self {
+            Lexer(lex_error) => Some(lex_error),
+            Parser(parse_error) => Some(parse_error),
+        }
+    }
 }
 
 /// トークンのリストの構文を解析する
@@ -241,7 +313,7 @@ where
         .ok_or(ParseError::Eof) // 次が無ければエラー
         .and_then(|tok| match tok.value {
             // UNUMBER
-            TokenKind::Number(n) => Ok(Ast::new(AstKind::Num(n), tok.location)),
+            TokenKind::Number(n) => Ok(Ast::num(n, tok.location)),
             // "(" EXPR3 ")"
             TokenKind::LParen => {
                 let exp = parse_expr(tokens)?;
@@ -252,7 +324,7 @@ where
                         .. // 他のフィールドは何でもよい
                     }) => Ok(exp),
                     // ")"以外の何かの場合
-                    Some(_) => Err(ParseError::RedundantExpression(tok)),
+                    Some(t) => Err(ParseError::RedundantExpression(t)),
                     // 次のトークンがない場合
                     _ => Err(ParseError::UnclosedOpenParen(tok)),
                 }
@@ -305,13 +377,8 @@ mod tests {
 
     #[test]
     fn test_parse_atom_num() {
-        let tokens = vec![
-            Token::number(1, Location(0, 1)),
-        ];
+        let tokens = vec![Token::number(1, Location(0, 1))];
         let mut iter = tokens.into_iter().peekable();
-        assert_eq!(
-            parse_atom(&mut iter),
-            Ok(Ast::num(1, Location(0, 1)))
-        );
+        assert_eq!(parse_atom(&mut iter), Ok(Ast::num(1, Location(0, 1))));
     }
 }

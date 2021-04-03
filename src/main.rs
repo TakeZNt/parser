@@ -1,6 +1,9 @@
-use std::io;
 mod lexer;
 mod parser;
+
+use parser::Ast;
+use std::error::Error;
+use std::io;
 
 fn prompt(s: &str) -> io::Result<()> {
     use std::io::{stdout, Write};
@@ -27,8 +30,19 @@ fn main() {
                     prompt("bye.").unwrap();
                     break;
                 }
-                let tokens = lexer::lex(&line).unwrap();
-                let ast = parser::parse(tokens).unwrap();
+                let ast = match line.parse::<Ast>() {
+                    Ok(ast) => ast,
+                    Err(e) => {
+                        println!("{}", e);
+                        let mut source = e.source();
+                        while let Some(e) = source {
+                            eprintln!("caused by {}", e);
+                            source = e.source();
+                        }
+                        continue;
+                    }
+                };
+
                 println!("{:?}", ast);
             }
         } else {
