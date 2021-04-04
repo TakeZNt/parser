@@ -182,7 +182,7 @@ impl Error for ApplicationError {
 impl ApplicationError {
     /// エラーの詳細を表示する
     pub fn show_diagnostic(&self, input: &str) {
-        let (e, loc): (&Error, Location) = match self {
+        let (e, loc): (&dyn Error, Location) = match self {
             ApplicationError::Lexer(e) => (e, e.location.clone()),
             ApplicationError::Parser(e) => {
                 let loc = match e {

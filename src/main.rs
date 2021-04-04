@@ -34,11 +34,7 @@ fn main() {
                     Ok(ast) => ast,
                     Err(e) => {
                         e.show_diagnostic(&line);
-                        let mut source = e.source();
-                        while let Some(e) = source {
-                            eprintln!("caused by {}", e);
-                            source = e.source();
-                        }
+                        show_trace(e);
                         continue;
                     }
                 };
@@ -48,5 +44,14 @@ fn main() {
         } else {
             break;
         }
+    }
+}
+
+fn show_trace<E: Error>(e: E) {
+    eprintln!("{}", e);
+    let mut source = e.source();
+    while let Some(e) = source {
+        eprintln!("caused by {}", e);
+        source = e.source();
     }
 }
