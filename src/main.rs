@@ -33,7 +33,7 @@ fn main() {
                 let ast = match line.parse::<Ast>() {
                     Ok(ast) => ast,
                     Err(e) => {
-                        println!("{}", e);
+                        e.show_diagnostic(&line);
                         let mut source = e.source();
                         while let Some(e) = source {
                             eprintln!("caused by {}", e);

@@ -179,6 +179,36 @@ impl Error for ApplicationError {
     }
 }
 
+impl ApplicationError {
+    /// エラーの詳細を表示する
+    pub fn show_diagnostic(&self, input: &str) {
+        let (e, loc): (&Error, Location) = match self {
+            ApplicationError::Lexer(e) => (e, e.location.clone()),
+            ApplicationError::Parser(e) => {
+                let loc = match e {
+                    ParseError::UnexpectedToken(Token { location, .. })
+                    | ParseError::NotExpression(Token { location, .. })
+                    | ParseError::NotOperator(Token { location, .. })
+                    | ParseError::UnclosedOpenParen(Token { location, .. }) => location.clone(),
+                    // 冗長なトークンがある場合、それ以降のすべてが冗長である
+                    ParseError::RedundantExpression(Token { location, .. }) => {
+                        Location(location.0, input.len())
+                    }
+                    ParseError::Eof => Location(input.len(), input.len() + 1),
+                };
+                (e, loc)
+            }
+        };
+        println!("{}", e);
+        print_annote(input, loc);
+    }
+}
+
+fn print_annote(input: &str, loc: Location) {
+    eprintln!("{}", input);
+    eprintln!("{}{}", " ".repeat(loc.0), "^".repeat(loc.1 - loc.0));
+}
+
 /// トークンのリストの構文を解析する
 pub fn parse(tokens: Vec<Token>) -> Result<Ast, ParseError> {
     // LL(1)パーサであるため、Peekableなイテレータを作成する
