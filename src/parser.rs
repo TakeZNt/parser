@@ -204,11 +204,6 @@ impl ApplicationError {
     }
 }
 
-pub fn print_annote(input: &str, loc: Location) {
-    eprintln!("{}", input);
-    eprintln!("{}{}", " ".repeat(loc.0), "^".repeat(loc.1 - loc.0));
-}
-
 /// トークンのリストの構文を解析する
 pub fn parse(tokens: Vec<Token>) -> Result<Ast, ParseError> {
     // LL(1)パーサであるため、Peekableなイテレータを作成する

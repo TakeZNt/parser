@@ -24,6 +24,11 @@ impl fmt::Display for Location {
     }
 }
 
+pub fn print_annote(input: &str, loc: Location) {
+    eprintln!("{}", input);
+    eprintln!("{}{}", " ".repeat(loc.0), "^".repeat(loc.1 - loc.0));
+}
+
 ///
 /// トークンの種類などの値と位置情報を持つアノテーション。
 ///
