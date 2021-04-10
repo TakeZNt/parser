@@ -204,7 +204,7 @@ impl ApplicationError {
     }
 }
 
-fn print_annote(input: &str, loc: Location) {
+pub fn print_annote(input: &str, loc: Location) {
     eprintln!("{}", input);
     eprintln!("{}{}", " ".repeat(loc.0), "^".repeat(loc.1 - loc.0));
 }

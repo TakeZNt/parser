@@ -1,7 +1,10 @@
+mod interpreter;
 mod lexer;
 mod parser;
 
+use interpreter::Interpreter;
 use parser::Ast;
+
 use std::error::Error;
 use std::io;
 
@@ -15,6 +18,8 @@ fn prompt(s: &str) -> io::Result<()> {
 
 fn main() {
     use std::io::{stdin, BufRead, BufReader};
+
+    let mut interpreter = Interpreter::new();
 
     let stdin = stdin();
     let stdin = stdin.lock();
@@ -30,6 +35,8 @@ fn main() {
                     prompt("bye.").unwrap();
                     break;
                 }
+
+                // 構文解析
                 let ast = match line.parse::<Ast>() {
                     Ok(ast) => ast,
                     Err(e) => {
@@ -39,7 +46,17 @@ fn main() {
                     }
                 };
 
-                println!("{:?}", ast);
+                // 評価
+                let n = match interpreter.eval(&ast) {
+                    Ok(n) => n,
+                    Err(e) => {
+                        e.show_diagnostic(&line);
+                        show_trace(e);
+                        continue;
+                    }
+                };
+
+                println!("{}", n);
             }
         } else {
             break;
