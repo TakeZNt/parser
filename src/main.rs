@@ -1,8 +1,10 @@
-mod interpreter;
+//mod interpreter;
 mod lexer;
 mod parser;
+mod compiler;
 
-use interpreter::Interpreter;
+//use interpreter::Interpreter;
+use compiler::RpnCompiler;
 use parser::Ast;
 
 use std::error::Error;
@@ -19,7 +21,8 @@ fn prompt(s: &str) -> io::Result<()> {
 fn main() {
     use std::io::{stdin, BufRead, BufReader};
 
-    let mut interpreter = Interpreter::new();
+    //let mut interpreter = Interpreter::new();
+    let mut compiler = RpnCompiler::new();
 
     let stdin = stdin();
     let stdin = stdin.lock();
@@ -47,16 +50,17 @@ fn main() {
                 };
 
                 // 評価
-                let n = match interpreter.eval(&ast) {
-                    Ok(n) => n,
-                    Err(e) => {
-                        e.show_diagnostic(&line);
-                        show_trace(e);
-                        continue;
-                    }
-                };
+                // let n = match interpreter.eval(&ast) {
+                //     Ok(n) => n,
+                //     Err(e) => {
+                //         e.show_diagnostic(&line);
+                //         show_trace(e);
+                //         continue;
+                //     }
+                // };
+                let rpn = compiler.compile(&ast);
 
-                println!("{}", n);
+                println!("{}", rpn);
             }
         } else {
             break;
